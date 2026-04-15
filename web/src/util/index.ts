@@ -1,11 +1,9 @@
 import { get } from 'lodash-es';
 
+import { platformAdapter } from '@/platform';
+
 export const downloadFile = (filename: string, blob: Blob) => {
-  const el = document.createElement('a');
-  el.href = URL.createObjectURL(blob);
-  el.target = '_blank';
-  el.download = filename;
-  el.click();
+  platformAdapter.downloadFile(filename, blob).catch(console.error);
 };
 
 export const querySearch = <T>(

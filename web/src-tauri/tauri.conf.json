@@ -2,10 +2,10 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "AutoNovel",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "top.novelia.autonovel.desktop",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:8080",
+    "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm dev:native",
     "beforeBuildCommand": "pnpm build"
   },

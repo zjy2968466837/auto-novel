@@ -1,9 +1,11 @@
 import ky from 'ky';
 
+import { getApiBaseUrl } from '@/platform';
+
 let tokenGetter: () => string = () => '';
 
 export const client = ky.create({
-  prefixUrl: '/api',
+  prefixUrl: getApiBaseUrl(),
   timeout: 60000,
   hooks: {
     beforeRequest: [
