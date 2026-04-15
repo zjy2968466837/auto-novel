@@ -22,7 +22,10 @@
     "prepare": "cd .. && husky web/.husky || true"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
     "@eslint/js": "^9.35.0",
+    "@tauri-apps/cli": "^2.10.1",
     "@types/node": "^20.19.13",
     "@vue/eslint-config-typescript": "^14.6.0",
     "eslint": "^9.35.0",
@@ -39,6 +42,7 @@
   },
   "dependencies": {
     "@auto-novel/crawler": "workspace:*",
+    "@capacitor/core": "^8.3.0",
     "@img-comparison-slider/vue": "^8.0.0",
     "@mdit/plugin-container": "^0.16.0",
     "@mdit/plugin-spoiler": "^0.16.0",
