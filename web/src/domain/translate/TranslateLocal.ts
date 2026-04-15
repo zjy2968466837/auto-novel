@@ -10,6 +10,7 @@ import type {
 } from '@/model/Translator';
 import { useLocalVolumeStore } from '@/stores';
 import type { Translator } from './Translator';
+import { RetryPolicy, UploadGuard } from './llm-core';
 
 export const translateLocal = async (
   { volumeId }: LocalTranslateTaskDesc,
@@ -18,6 +19,11 @@ export const translateLocal = async (
   translator: Translator,
   signal?: AbortSignal,
 ) => {
+  const retryPolicy = new RetryPolicy({
+    maxAttempts: 3,
+    baseDelayMs: 1000,
+    maxDelayMs: 10_000,
+  });
   const localVolumeRepository = await useLocalVolumeStore();
   // Api
   const getVolume = () => localVolumeRepository.getVolume(volumeId);
@@ -102,11 +108,28 @@ export const translateLocal = async (
       });
 
       callback.log('上传章节');
-      const state = await updateTranslation(chapterId, {
-        glossaryId: metadata.glossaryId,
-        glossary: metadata.glossary,
-        paragraphs: textsZh,
+      UploadGuard.assertBeforeUpload({
+        sourceParagraphs: textsJp,
+        translatedParagraphs: textsZh,
+        expectedGlossaryId: metadata.glossaryId,
+        uploadGlossaryId: metadata.glossaryId,
+        oldParagraphsSnapshot: oldTextsZh
+          ? oldTextsZh[translator.id]?.paragraphs
+          : undefined,
       });
+      const state = await retryPolicy.run(
+        async (attempt) => {
+          if (attempt > 0) {
+            callback.log(`上传章节-重试${attempt + 1}`);
+          }
+          return updateTranslation(chapterId, {
+            glossaryId: metadata.glossaryId,
+            glossary: metadata.glossary,
+            paragraphs: textsZh,
+          });
+        },
+        { signal },
+      );
       callback.onChapterSuccess({ zh: state });
     } catch (e) {
       if (e === 'quit') {

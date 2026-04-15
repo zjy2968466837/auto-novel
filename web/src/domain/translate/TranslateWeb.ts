@@ -5,9 +5,9 @@ import type {
   WebTranslateTask,
   WebTranslateTaskDesc,
 } from '@/model/Translator';
-import { delay } from '@/util';
 
 import type { Translator } from './Translator';
+import { RetryPolicy, UploadGuard } from './llm-core';
 
 export const translateWeb = async (
   { providerId, novelId }: WebTranslateTaskDesc,
@@ -16,6 +16,11 @@ export const translateWeb = async (
   translator: Translator,
   signal?: AbortSignal,
 ) => {
+  const retryPolicy = new RetryPolicy({
+    maxAttempts: 3,
+    baseDelayMs: 1000,
+    maxDelayMs: 10_000,
+  });
   const {
     getTranslateTask,
     getChapterTranslateTask,
@@ -33,14 +38,15 @@ export const translateWeb = async (
   let task: WebTranslateTask;
   try {
     callback.log('获取翻译任务');
-    // 临时手段解决timeout，等数据库大修完成后删去
-    try {
-      task = await getTranslateTask();
-    } catch (e: unknown) {
-      callback.log('获取翻译任务-延迟10s重试');
-      await delay(10_000, signal);
-      task = await getTranslateTask();
-    }
+    task = await retryPolicy.run(
+      async (attempt) => {
+        if (attempt > 0) {
+          callback.log(`获取翻译任务-重试${attempt + 1}`);
+        }
+        return getTranslateTask();
+      },
+      { signal },
+    );
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') {
       callback.log(`中止翻译任务`);
@@ -152,7 +158,15 @@ export const translateWeb = async (
         });
 
         callback.log(`上传元数据`);
-        await updateMetadataTranslation(coder.recover(textsDst));
+        await retryPolicy.run(
+          async (attempt) => {
+            if (attempt > 0) {
+              callback.log(`上传元数据-重试${attempt + 1}`);
+            }
+            await updateMetadataTranslation(coder.recover(textsDst));
+          },
+          { signal },
+        );
       }
     }
   } catch (e) {
@@ -209,10 +223,25 @@ export const translateWeb = async (
           signal,
         });
         callback.log(`上传章节`);
-        const { jp, zh } = await updateChapterTranslation(chapterId, {
-          glossaryId: cTask.glossaryId,
-          paragraphsZh: textsZh,
+        UploadGuard.assertBeforeUpload({
+          sourceParagraphs: cTask.paragraphJp,
+          translatedParagraphs: textsZh,
+          expectedGlossaryId: cTask.glossaryId,
+          uploadGlossaryId: cTask.glossaryId,
+          oldParagraphsSnapshot: cTask.oldParagraphZh,
         });
+        const { jp, zh } = await retryPolicy.run(
+          async (attempt) => {
+            if (attempt > 0) {
+              callback.log(`上传章节-重试${attempt + 1}`);
+            }
+            return updateChapterTranslation(chapterId, {
+              glossaryId: cTask.glossaryId,
+              paragraphsZh: textsZh,
+            });
+          },
+          { signal },
+        );
         callback.onChapterSuccess({ jp, zh });
       }
     } catch (e) {

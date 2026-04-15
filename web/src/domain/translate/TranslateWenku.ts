@@ -7,6 +7,7 @@ import type {
 } from '@/model/Translator';
 
 import type { Translator } from './Translator';
+import { RetryPolicy, UploadGuard } from './llm-core';
 
 export const translateWenku = async (
   { novelId, volumeId }: WenkuTranslateTaskDesc,
@@ -15,6 +16,11 @@ export const translateWenku = async (
   translator: Translator,
   signal?: AbortSignal,
 ) => {
+  const retryPolicy = new RetryPolicy({
+    maxAttempts: 3,
+    baseDelayMs: 1000,
+    maxDelayMs: 10_000,
+  });
   const {
     getTranslateTask,
     getChapterTranslateTask,
@@ -30,7 +36,15 @@ export const translateWenku = async (
   let task: WenkuTranslateTask;
   try {
     callback.log(`获取未翻译章节 ${volumeId}`);
-    task = await getTranslateTask();
+    task = await retryPolicy.run(
+      async (attempt) => {
+        if (attempt > 0) {
+          callback.log(`获取未翻译章节-重试${attempt + 1}`);
+        }
+        return getTranslateTask();
+      },
+      { signal },
+    );
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') {
       callback.log(`中止翻译任务`);
@@ -81,10 +95,25 @@ export const translateWenku = async (
           signal,
         });
         callback.log('上传章节');
-        const state = await updateChapterTranslation(chapterId, {
-          glossaryId: cTask.glossaryId,
-          paragraphsZh: textsZh,
+        UploadGuard.assertBeforeUpload({
+          sourceParagraphs: cTask.paragraphJp,
+          translatedParagraphs: textsZh,
+          expectedGlossaryId: cTask.glossaryId,
+          uploadGlossaryId: cTask.glossaryId,
+          oldParagraphsSnapshot: cTask.oldParagraphZh,
         });
+        const state = await retryPolicy.run(
+          async (attempt) => {
+            if (attempt > 0) {
+              callback.log(`上传章节-重试${attempt + 1}`);
+            }
+            return updateChapterTranslation(chapterId, {
+              glossaryId: cTask.glossaryId,
+              paragraphsZh: textsZh,
+            });
+          },
+          { signal },
+        );
         callback.onChapterSuccess({ zh: state });
       }
     } catch (e) {

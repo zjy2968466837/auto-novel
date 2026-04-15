@@ -40,3 +40,56 @@ docker compose up -d
 ```
 
 启动后，访问 http://localhost 即可。
+
+## 桌面端与安卓端运行（同一套 Web 代码）
+
+项目已提供 `web` 子项目的跨端打包基础：
+
+- 桌面端：Tauri
+- 安卓端：Capacitor
+- 统一入口：`web` 构建产物 `dist/`
+
+### 1) 安装依赖
+
+```bash
+pnpm install
+```
+
+### 2) 桌面端（Tauri）
+
+```bash
+cd web
+pnpm tauri:dev
+# 或打包
+pnpm tauri:build
+```
+
+### 3) 安卓端（Capacitor）
+
+```bash
+cd web
+# 首次执行
+pnpm android:add
+
+# 同步 Web 构建产物到原生工程
+pnpm cap:sync
+
+# 使用 Android Studio 打开工程
+pnpm android:open
+```
+
+### 4) API 地址策略
+
+- Web 默认：`/api`（由 Web 服务侧反向代理处理）
+- `VITE_API_MODE=native` 开发态：`/api`（沿用 Vite 代理）
+- `VITE_API_MODE=native` 生产态默认：`https://n.novelia.cc/api`
+- 可通过 `VITE_API_BASE_URL` 覆盖
+
+### 5) 双端验收清单
+
+- [ ] 启动应用（桌面/安卓）
+- [ ] 小说检索与阅读
+- [ ] 翻译任务下发与结果回显
+- [ ] 缓存/存储数据可读写
+- [ ] 网络异常后的重试/恢复
+- [ ] 日志导出能力可用
