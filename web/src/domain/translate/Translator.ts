@@ -4,6 +4,7 @@ import type { Glossary } from '@/model/Glossary';
 import type { TranslatorId } from '@/model/Translator';
 
 import { BaiduTranslator } from './TranslatorBaidu';
+import { DeepSeekTranslator } from './TranslatorDeepSeek';
 import { OpenAiTranslator } from './TranslatorOpenAi';
 import { SakuraTranslator } from './TranslatorSakura';
 import { YoudaoTranslator } from './TranslatorYoudao';
@@ -190,6 +191,17 @@ export namespace Translator {
     } else if (config.id === 'youdao') {
       return YoudaoTranslator.create(log);
     } else if (config.id === 'gpt') {
+      if (
+        config.type === 'api' &&
+        (config.model.startsWith('deepseek-') ||
+          /deepseek/i.test(config.endpoint))
+      ) {
+        return DeepSeekTranslator.create(log, {
+          endpoint: config.endpoint,
+          model: config.model,
+          key: config.key,
+        });
+      }
       return OpenAiTranslator.create(log, config);
     } else {
       return SakuraTranslator.create(log, config);
