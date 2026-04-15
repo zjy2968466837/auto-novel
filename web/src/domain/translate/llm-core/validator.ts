@@ -8,6 +8,15 @@ const stripPrefix = (line: string, index: number) =>
     .replace(new RegExp(`^${index + 1}[：:]`), '')
     .trim();
 
+const parseNumberedLine = (line: string) => {
+  const matched = line.match(/^#?(\d+)[：:](.*)$/);
+  if (!matched) return;
+  return {
+    index: Number.parseInt(matched[1], 10) - 1,
+    text: matched[2].trim(),
+  };
+};
+
 export class OutputValidator {
   static parseNumbered(content: string, expectedLines: number): string[] {
     const rawLines = content
@@ -20,10 +29,19 @@ export class OutputValidator {
     }
 
     const strict = rawLines
-      .filter((it) => /^#?\d+[：:]/.test(it))
-      .map((it, i) => stripPrefix(it, i));
-    if (strict.length === expectedLines) {
-      return strict;
+      .map(parseNumberedLine)
+      .filter((it) => it !== undefined);
+    if (
+      strict.length === expectedLines &&
+      strict.every(
+        (it) =>
+          it.index >= 0 && it.index < expectedLines && !Number.isNaN(it.index),
+      )
+    ) {
+      const sorted = strict.sort((a, b) => a.index - b.index);
+      if (sorted.every((it, i) => it.index === i)) {
+        return sorted.map((it) => it.text);
+      }
     }
 
     return rawLines.map((it, i) => stripPrefix(it, i));
@@ -44,7 +62,7 @@ export class OutputValidator {
     let jp = 0;
     let en = 0;
     const reChinese =
-      /[:|#| |0-9|\u4e00-\u9fa5|\u3002|\uff1f|\uff01|\uff0c|\u3001|\uff1b|\uff1a|\u201c|\u201d|\u2018|\u2019|\uff08|\uff09|\u300a|\u300b|\u3008|\u3009|\u3010|\u3011|\u300e|\u300f|\u300c|\u300d|\ufe43|\ufe44|\u3014|\u3015|\u2026|\u2014|\uff5e|\ufe4f|\uffe5]/;
+      /[:# 0-9\u4e00-\u9fa5\u3002\uff1f\uff01\uff0c\u3001\uff1b\uff1a\u201c\u201d\u2018\u2019\uff08\uff09\u300a\u300b\u3008\u3009\u3010\u3011\u300e\u300f\u300c\u300d\ufe43\ufe44\u3014\u3015\u2026\u2014\uff5e\ufe4f\uffe5]/;
     for (const c of text) {
       if (reChinese.test(c)) {
         zh++;

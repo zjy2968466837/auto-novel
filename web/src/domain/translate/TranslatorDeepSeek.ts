@@ -17,11 +17,16 @@ export class DeepSeekTranslator implements SegmentTranslator {
   private retryPolicy: RetryPolicy;
 
   constructor(log: Logger, config: DeepSeekTranslator.Config) {
+    const model = config.model || 'deepseek-chat';
+    if (typeof model !== 'string' || model.trim().length === 0) {
+      throw new Error('DeepSeek model 配置无效');
+    }
+
     this.log = log;
     this.adapter = new OpenAiCompatibleAdapter({
       endpoint: config.endpoint || 'https://api.deepseek.com',
       key: config.key,
-      model: config.model || 'deepseek-chat',
+      model,
       timeoutMs: config.timeoutMs,
     });
     this.temperature = config.temperature;
@@ -84,7 +89,7 @@ export class DeepSeekTranslator implements SegmentTranslator {
         );
       } catch {
         if (right - left <= 1) {
-          throw new Error('重试次数太多');
+          throw new Error('单行翻译失败');
         }
         this.log(`翻译${left + 1}到${right}行失败，继续二分`);
         const mid = Math.floor((left + right) / 2);

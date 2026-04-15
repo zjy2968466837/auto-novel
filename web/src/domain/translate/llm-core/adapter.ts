@@ -61,23 +61,27 @@ export class OpenAiCompatibleAdapter implements LlmAdapter {
     };
 
     if (options?.stream) {
-      const completionStream = await this.api.createChatCompletionsStream(
-        {
-          ...payload,
-          stream: true,
-        },
-        requestOptions,
-      );
-      let content = '';
-      let finishReason: string | null | undefined = null;
-      for (const chunk of completionStream) {
-        const choice = chunk.choices[0];
-        content += choice?.delta?.content ?? '';
-        if (choice?.finish_reason != null) {
-          finishReason = choice.finish_reason;
+      try {
+        const completionStream = await this.api.createChatCompletionsStream(
+          {
+            ...payload,
+            stream: true,
+          },
+          requestOptions,
+        );
+        let content = '';
+        let finishReason: string | null | undefined = null;
+        for (const chunk of completionStream) {
+          const choice = chunk.choices[0];
+          content += choice?.delta?.content ?? '';
+          if (choice?.finish_reason != null) {
+            finishReason = choice.finish_reason;
+          }
         }
+        return { content, finishReason };
+      } catch (error) {
+        throw new Error(`stream completion failed: ${error}`);
       }
-      return { content, finishReason };
     }
 
     const completion = await this.api.createChatCompletions(

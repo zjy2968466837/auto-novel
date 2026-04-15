@@ -1,6 +1,8 @@
 import { OpenAiError } from '@/api';
 import { delay } from '@/util';
 
+const DEFAULT_MAX_DELAY_MS = 30_000;
+
 export interface RetryPolicyConfig {
   maxAttempts?: number;
   baseDelayMs?: number;
@@ -33,7 +35,7 @@ export class RetryPolicy {
   constructor(config?: RetryPolicyConfig) {
     this.maxAttempts = config?.maxAttempts ?? 4;
     this.baseDelayMs = config?.baseDelayMs ?? 1000;
-    this.maxDelayMs = config?.maxDelayMs ?? 30_000;
+    this.maxDelayMs = config?.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
   }
 
   async run<T>(
