@@ -2,6 +2,8 @@ import { Capacitor } from '@capacitor/core';
 
 import type { PlatformKind } from './types';
 
+const NATIVE_PROD_DEFAULT_API_BASE_URL = 'https://n.novelia.cc/api';
+
 const tauri = () =>
   typeof window !== 'undefined' &&
   '__TAURI_INTERNALS__' in
@@ -24,7 +26,7 @@ export const getApiBaseUrl = () => {
     return override;
   }
   if (mode === 'native') {
-    return import.meta.env.DEV ? '/api' : 'https://n.novelia.cc/api';
+    return import.meta.env.DEV ? '/api' : NATIVE_PROD_DEFAULT_API_BASE_URL;
   }
   return '/api';
 };
